@@ -483,25 +483,34 @@ function loadState(){
   try{
     var saved = localStorage.getItem('cruzy_gantt_v3');
     if(saved){
-      var data = JSON.parse(saved);
-      data.forEach(function(s){
-        var t = TASKS.find(function(x){return x.id === s.id});
-        if(t){
-          // Update existing task
-          t.assignee = s.assignee || '';
-          t.status = s.status || 'todo';
-          t.cs = s.cs || '';
-          t.ce = s.ce || '';
-          t.ts = s.ts || '';
-          t.te = s.te || '';
-          t.dp = s.dp || '';
-          t.rc = s.rc || '';
-          t.note = s.note || '';
-        } else if(s.id && s.id.indexOf('X')===0 && s.cat && s.sub && s.name){
-          // Restore custom-added task
-          TASKS.push({id:s.id,cat:s.cat,sub:s.sub,name:s.name,desc:s.desc||'',assignee:s.assignee||'',status:s.status||'todo',cs:s.cs||'',ce:s.ce||'',ts:s.ts||'',te:s.te||'',dp:s.dp||'',rc:s.rc||'',note:s.note||''});
-        }
-      });
+      var parsed = JSON.parse(saved);
+      var data = Array.isArray(parsed) ? parsed : parsed.tasks;
+      if(Array.isArray(data)){
+        data.forEach(function(s){
+          var t = TASKS.find(function(x){return x.id === s.id});
+          if(t){
+            t.assignee = s.assignee || '';
+            t.status = s.status || 'todo';
+            t.cs = s.cs || '';
+            t.ce = s.ce || '';
+            t.ts = s.ts || '';
+            t.te = s.te || '';
+            t.dp = s.dp || '';
+            t.rc = s.rc || '';
+            t.note = s.note || '';
+          } else if(s.id && s.id.indexOf('X')===0 && s.cat && s.sub && s.name){
+            TASKS.push({id:s.id,cat:s.cat,sub:s.sub,name:s.name,desc:s.desc||'',assignee:s.assignee||'',status:s.status||'todo',cs:s.cs||'',ce:s.ce||'',ts:s.ts||'',te:s.te||'',dp:s.dp||'',rc:s.rc||'',note:s.note||''});
+          }
+        });
+      }
+      // restore UI state if present
+      if(parsed && !Array.isArray(parsed) && parsed.ui){
+        collapsedCats = parsed.ui.collapsedCats || {};
+        collapsedSubs = parsed.ui.collapsedSubs || {};
+        try{ if(document.getElementById('filterCat')) document.getElementById('filterCat').value = parsed.ui.filterCat || 'all'; }catch(e){}
+        try{ if(document.getElementById('filterStatus')) document.getElementById('filterStatus').value = parsed.ui.filterStatus || 'all'; }catch(e){}
+        try{ if(document.getElementById('searchInput')) document.getElementById('searchInput').value = parsed.ui.searchInput || ''; }catch(e){}
+      }
     }
   }catch(e){}
 }
@@ -511,7 +520,15 @@ function saveState(){
     var data = TASKS.map(function(t){
       return {id:t.id,cat:t.cat,sub:t.sub,name:t.name,desc:t.desc,assignee:t.assignee,status:t.status,cs:t.cs,ce:t.ce,ts:t.ts,te:t.te,dp:t.dp,rc:t.rc,note:t.note};
     });
-    localStorage.setItem('cruzy_gantt_v3', JSON.stringify(data));
+    var ui = {
+      collapsedCats: collapsedCats || {},
+      collapsedSubs: collapsedSubs || {},
+      filterCat: (document.getElementById('filterCat') && document.getElementById('filterCat').value) || 'all',
+      filterStatus: (document.getElementById('filterStatus') && document.getElementById('filterStatus').value) || 'all',
+      searchInput: (document.getElementById('searchInput') && document.getElementById('searchInput').value) || ''
+    };
+    var payload = {tasks: data, ui: ui, savedAt: new Date().toISOString()};
+    localStorage.setItem('cruzy_gantt_v3', JSON.stringify(payload));
     showToast('💾 บันทึกเรียบร้อย!');
   }catch(e){showToast('❌ บันทึกไม่สำเร็จ','error')}
 }
@@ -771,23 +788,27 @@ function parseDate(s){
 function toggleCat(key){
   collapsedCats[key] = !collapsedCats[key];
   render();
+  saveState();
 }
 function toggleSub(key){
   collapsedSubs[key] = !collapsedSubs[key];
   render();
+  saveState();
 }
 function expandAll(){
   collapsedCats={};collapsedSubs={};
   render();
+  saveState();
 }
 function collapseAll(){
   Object.keys(CATS).forEach(function(k){collapsedCats[k]=true});
   render();
+  saveState();
 }
 
 function updateField(id,field,value){
   var t = TASKS.find(function(x){return x.id===id});
-  if(t){t[field]=value; render();}
+  if(t){t[field]=value; render(); saveState();}
 }
 
 function cycleStatus(id){
@@ -797,6 +818,7 @@ function cycleStatus(id){
   var i = order.indexOf(t.status);
   t.status = order[(i+1)%order.length];
   render();
+  saveState();
 }
 
 // Modal — Edit mode
