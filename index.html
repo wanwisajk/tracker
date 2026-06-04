@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cruzy Admin — Dev Gantt Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f5f7fa;--card:#fff;--text:#1a1a2e;--muted:#64748b;--border:#e2e8f0;--primary:#1B5E20;--pl:#4CAF50;--blue:#3b82f6;--orange:#f59e0b;--green:#10b981;--purple:#8b5cf6;--red:#ef4444;--pink:#ec4899;--teal:#0ea5e9;--coding:#3b82f6;--testing:#f59e0b;--deploy:#10b981;--recheck:#8b5cf6;--rad:8px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans Thai',-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:13px}
+
+/* Top Bar */
+.topbar{background:linear-gradient(135deg,#1B5E20,#2E7D32);color:#fff;padding:16px 24px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+.topbar h1{font-size:18px;font-weight:700}
+.topbar-sub{font-size:11px;opacity:.8;margin-top:2px}
+.topbar-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.topbar-stats{display:flex;gap:12px;margin-top:8px}
+.stat-box{background:rgba(255,255,255,.15);padding:6px 14px;border-radius:8px;text-align:center;min-width:80px}
+.stat-num{font-size:20px;font-weight:700}
+.stat-label{font-size:10px;opacity:.8}
+.topbar-actions{display:flex;gap:8px;margin-top:8px}
+.topbar-actions button{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:500}
+.topbar-actions button:hover{background:rgba(255,255,255,.3)}
+
+/* Filter Bar */
+.filter-bar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;position:sticky;top:76px;z-index:99}
+.filter-bar label{font-size:11px;color:var(--muted);font-weight:600}
+.filter-bar select,.filter-bar input{padding:5px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;outline:none}
+.filter-bar select:focus,.filter-bar input:focus{border-color:var(--primary)}
+.filter-sep{width:1px;height:24px;background:var(--border)}
+.search-input{width:200px}
+
+/* Legend */
+.legend{display:flex;gap:16px;margin-left:auto;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)}
+.legend-dot{width:12px;height:12px;border-radius:3px}
+
+/* Main Container */
+.gantt-container{display:flex;overflow:hidden;height:calc(100vh - 140px)}
+
+/* Left Panel - Task List */
+.task-panel{width:780px;min-width:780px;overflow-y:auto;border-right:2px solid var(--border);background:var(--card)}
+.task-panel::-webkit-scrollbar{width:6px}
+.task-panel::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}
+
+/* Right Panel - Timeline */
+.timeline-panel{flex:1;overflow:auto;position:relative;background:#fafbfc}
+.timeline-panel::-webkit-scrollbar{height:8px;width:6px}
+.timeline-panel::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}
+
+/* Category Header */
+.cat-header{background:linear-gradient(135deg,#1e293b,#334155);color:#fff;padding:10px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10;user-select:none}
+.cat-header:hover{background:linear-gradient(135deg,#334155,#475569)}
+.cat-icon{font-size:18px}
+.cat-title{font-size:14px;font-weight:700;flex:1}
+.cat-count{font-size:11px;background:rgba(255,255,255,.2);padding:2px 10px;border-radius:10px}
+.cat-progress{width:80px;height:6px;background:rgba(255,255,255,.2);border-radius:3px;overflow:hidden}
+.cat-progress-bar{height:100%;background:#69F0AE;border-radius:3px;transition:width .3s}
+.cat-arrow{font-size:14px;transition:transform .2s}
+.cat-header.collapsed .cat-arrow{transform:rotate(-90deg)}
+
+/* Sub Category */
+.subcat-header{background:#f1f5f9;padding:6px 16px 6px 28px;font-size:12px;font-weight:700;color:var(--primary);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.subcat-header:hover{background:#e8eef5}
+.subcat-count{font-size:10px;color:var(--muted);font-weight:400}
+
+/* Task Row */
+.task-row{display:grid;grid-template-columns:52px 1fr 90px 84px 82px 82px 82px 82px;align-items:center;padding:0;border-bottom:1px solid #f1f5f9;min-height:44px;transition:background .1s}
+.task-row:hover{background:#f8fafc}
+.task-row.highlight{background:#fffbeb}
+
+.task-cell{padding:4px 6px;font-size:11px;overflow:hidden}
+.task-id{color:var(--muted);font-weight:600;font-size:10px;text-align:center;white-space:nowrap}
+.task-name{font-weight:500;padding-left:16px;white-space:normal;word-break:break-word;line-height:1.4}
+.task-name .desc{color:var(--muted);font-size:10px;display:block;white-space:normal;word-break:break-word;line-height:1.3;margin-top:1px}
+
+/* Add task button in subcat */
+.add-task-btn{background:none;border:1px dashed var(--border);color:var(--muted);padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;margin:4px 16px 4px 28px;display:block;width:calc(100% - 44px);text-align:center;transition:.2s}
+.add-task-btn:hover{border-color:var(--primary);color:var(--primary);background:#f0fdf4}
+
+/* Delete button in modal */
+.btn-delete{background:#fee2e2;color:#dc2626}
+.btn-delete:hover{background:#fecaca}
+
+/* Assignee & Status */
+.task-row select,.task-row input[type=date]{width:100%;padding:2px 4px;border:1px solid transparent;border-radius:4px;font-size:10px;font-family:inherit;background:transparent;outline:none;cursor:pointer}
+.task-row select:hover,.task-row input[type=date]:hover{border-color:var(--border)}
+.task-row select:focus,.task-row input[type=date]:focus{border-color:var(--primary);background:#fff}
+.task-row input[type=date]{font-size:10px;text-align:center}
+
+/* Status badge */
+.status-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;text-align:center;width:100%}
+.status-todo{background:#f1f5f9;color:#64748b}
+.status-coding{background:#dbeafe;color:#1d4ed8}
+.status-testing{background:#fef3c7;color:#d97706}
+.status-deploy{background:#d1fae5;color:#065f46}
+.status-recheck{background:#ede9fe;color:#6d28d9}
+.status-done{background:#dcfce7;color:#166534}
+.status-blocked{background:#fee2e2;color:#dc2626}
+
+/* Table Header */
+.table-header{display:grid;grid-template-columns:52px 1fr 90px 84px 82px 82px 82px 82px;background:#f8fafc;border-bottom:2px solid var(--border);position:sticky;top:0;z-index:11}
+.th{padding:8px 6px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;text-align:center;border-right:1px solid #eee}
+.th:first-child{text-align:center}
+.th:nth-child(2){text-align:left;padding-left:28px}
+.th.th-code{color:var(--coding);background:#eff6ff}
+.th.th-test{color:var(--testing);background:#fffbeb}
+.th.th-dep{color:var(--deploy);background:#ecfdf5}
+.th.th-rec{color:var(--recheck);background:#f5f3ff}
+
+/* Timeline Header */
+.tl-header{display:flex;background:#f8fafc;border-bottom:2px solid var(--border);position:sticky;top:0;z-index:11;min-width:max-content}
+.tl-month{text-align:center;font-size:10px;font-weight:700;color:var(--text);border-right:1px solid var(--border);padding:2px 0}
+.tl-days{display:flex}
+.tl-day{width:28px;min-width:28px;text-align:center;font-size:9px;color:var(--muted);padding:2px 0;border-right:1px solid #f1f5f9}
+.tl-day.weekend{background:#fef2f2;color:#fca5a5}
+.tl-day.today{background:#dbeafe;color:var(--blue);font-weight:700}
+
+/* Timeline Row */
+.tl-row{display:flex;min-height:34px;border-bottom:1px solid #f1f5f9;position:relative;min-width:max-content}
+.tl-cell{width:28px;min-width:28px;border-right:1px solid #f8f8f8}
+.tl-cell.weekend{background:rgba(254,242,242,.5)}
+.tl-cell.today{background:rgba(219,234,254,.4)}
+
+/* Gantt Bars */
+.gantt-bar{position:absolute;height:14px;top:10px;border-radius:3px;opacity:.9;z-index:2;transition:opacity .15s}
+.gantt-bar:hover{opacity:1;height:18px;top:8px;z-index:3}
+.gantt-bar.coding{background:linear-gradient(90deg,#60a5fa,#3b82f6)}
+.gantt-bar.testing{background:linear-gradient(90deg,#fbbf24,#f59e0b)}
+.gantt-bar.deploy{background:linear-gradient(90deg,#34d399,#10b981)}
+.gantt-bar.recheck{background:linear-gradient(90deg,#a78bfa,#8b5cf6)}
+
+/* Today line */
+.today-line{position:absolute;top:0;bottom:0;width:2px;background:#ef4444;z-index:5;pointer-events:none}
+.today-line::before{content:'วันนี้';position:absolute;top:-18px;left:-12px;font-size:9px;color:#ef4444;font-weight:700;white-space:nowrap}
+
+/* Cat header row in timeline */
+.tl-cat-header{min-height:38px;background:linear-gradient(135deg,#1e293b,#334155)}
+.tl-subcat-header{min-height:30px;background:#f1f5f9}
+
+/* Tooltip */
+.tooltip{position:fixed;background:#1e293b;color:#fff;padding:10px 14px;border-radius:8px;font-size:11px;z-index:1000;pointer-events:none;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.25);display:none}
+.tooltip .tt-title{font-weight:700;margin-bottom:4px}
+.tooltip .tt-row{display:flex;justify-content:space-between;gap:16px;padding:1px 0}
+.tooltip .tt-label{color:#94a3b8}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:16px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-header h3{font-size:16px;font-weight:700}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)}
+.modal-body{padding:20px}
+.modal-body .field{margin-bottom:14px}
+.modal-body .field label{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.modal-body .field input,.modal-body .field select,.modal-body .field textarea{width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none}
+.modal-body .field input:focus,.modal-body .field select:focus{border-color:var(--primary)}
+.modal-body .date-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.modal-footer button{padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;border:none}
+.btn-save{background:var(--primary);color:#fff}
+.btn-cancel{background:#f1f5f9;color:var(--text)}
+
+/* Responsive */
+@media(max-width:1200px){.task-panel{width:560px;min-width:560px}.task-row,.table-header{grid-template-columns:42px 1fr 80px 76px 72px 72px 72px 72px}}
+@media print{
+  .topbar,.filter-bar,.topbar-actions{position:relative!important}
+  .gantt-container{height:auto!important;overflow:visible!important}
+  .task-panel,.timeline-panel{overflow:visible!important}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-row">
+    <div>
+      <h1>📊 Cruzy Admin — Dev Gantt Tracker</h1>
+      <div class="topbar-sub">Breakdown ฟังก์ชั่นทั้งระบบ · Dashboard + LINE OA + Database · สำหรับฝ่ายพัฒนา</div>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap">
+    <div class="topbar-stats" id="stats"></div>
+    <div class="topbar-actions">
+      <button onclick="openAddModal()" style="background:#4CAF50;border-color:#4CAF50;font-weight:700">➕ เพิ่ม Task</button>
+      <button onclick="expandAll()">📂 เปิดทั้งหมด</button>
+      <button onclick="collapseAll()">📁 ปิดทั้งหมด</button>
+      <button onclick="saveState()">💾 บันทึก</button>
+      <button onclick="exportCSV()">📥 Export CSV</button>
+    </div>
+  </div>
+</div>
+
+<div class="filter-bar">
+  <label>หมวด:</label>
+  <select id="filterCat" onchange="render()"><option value="all">ทั้งหมด</option><option value="dashboard">📊 Dashboard</option><option value="line">💬 LINE OA</option><option value="database">🗄️ Database & API</option></select>
+  <div class="filter-sep"></div>
+  <label>สถานะ:</label>
+  <select id="filterStatus" onchange="render()"><option value="all">ทั้งหมด</option><option value="todo">📋 ยังไม่เริ่ม</option><option value="coding">💻 Coding</option><option value="testing">🧪 Testing</option><option value="deploy">🚀 Deploy</option><option value="recheck">🔍 Recheck</option><option value="done">✅ Done</option><option value="blocked">🚫 Blocked</option></select>
+  <div class="filter-sep"></div>
+  <label>ค้นหา:</label>
+  <input type="text" class="search-input" id="searchInput" placeholder="ชื่อ task, ID..." oninput="render()">
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--coding)"></div>Coding</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--testing)"></div>Internal Test</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--deploy)"></div>Deploy</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--recheck)"></div>Recheck</div>
+  </div>
+</div>
+
+<div class="gantt-container">
+  <div class="task-panel" id="taskPanel"></div>
+  <div class="timeline-panel" id="timelinePanel"></div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<!-- Edit / Add Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">แก้ไข Task</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field" id="mIdField"><label>Task ID</label><input id="mId" readonly style="background:#f8f8f8"></div>
+      <div class="field" id="mCatField" style="display:none"><label>หมวด *</label>
+        <select id="mCat" onchange="updateSubOptions()">
+          <option value="dashboard">📊 Dashboard</option>
+          <option value="line">💬 LINE OA</option>
+          <option value="database">🗄️ Database & API</option>
+        </select>
+      </div>
+      <div class="field" id="mSubField" style="display:none"><label>หมวดย่อย *</label>
+        <div style="display:flex;gap:6px">
+          <select id="mSub" style="flex:1"><option value="">— เลือกหมวดย่อย —</option></select>
+          <input id="mSubNew" placeholder="หรือพิมพ์ใหม่..." style="flex:1">
+        </div>
+      </div>
+      <div class="field"><label>ชื่อ Task *</label><input id="mName" placeholder="ชื่อ task..."></div>
+      <div class="field"><label>รายละเอียด</label><textarea id="mDesc" rows="2" placeholder="อธิบายว่า task นี้ต้องทำอะไร..."></textarea></div>
+      <div class="field"><label>ผู้รับผิดชอบ</label><input id="mAssignee" placeholder="ชื่อ dev..."></div>
+      <div class="field"><label>สถานะ</label>
+        <select id="mStatus">
+          <option value="todo">📋 ยังไม่เริ่ม</option>
+          <option value="coding">💻 Coding</option>
+          <option value="testing">🧪 Internal Test</option>
+          <option value="deploy">🚀 Deploy</option>
+          <option value="recheck">🔍 Recheck</option>
+          <option value="done">✅ Done</option>
+          <option value="blocked">🚫 Blocked</option>
+        </select>
+      </div>
+      <div class="date-grid">
+        <div class="field"><label>🔵 Coding เริ่ม</label><input type="date" id="mCS"></div>
+        <div class="field"><label>🔵 Coding จบ</label><input type="date" id="mCE"></div>
+        <div class="field"><label>🟡 Test เริ่ม</label><input type="date" id="mTS"></div>
+        <div class="field"><label>🟡 Test จบ</label><input type="date" id="mTE"></div>
+        <div class="field"><label>🟢 Deploy</label><input type="date" id="mDP"></div>
+        <div class="field"><label>🟣 Recheck</label><input type="date" id="mRC"></div>
+      </div>
+      <div class="field"><label>หมายเหตุ</label><textarea id="mNote" rows="2" placeholder="บันทึกเพิ่มเติม..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-delete" id="btnDelete" onclick="deleteTask()" style="margin-right:auto;display:none">🗑️ ลบ Task</button>
+      <button class="btn-cancel" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn-save" id="btnSave" onclick="saveModal()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ TASK DATA ============
+var TASKS = [
+  // ===== DASHBOARD =====
+  // Auth & Layout
+  {id:'D01',cat:'dashboard',sub:'Auth & Layout',name:'Login Page (Role-based)',desc:'หน้า Login แยก role: Owner / ผจก. / พนักงาน',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D02',cat:'dashboard',sub:'Auth & Layout',name:'Sidebar Navigation',desc:'เมนูด้านซ้าย เลือก Tab + เลือกสาขา',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D03',cat:'dashboard',sub:'Auth & Layout',name:'Role-Based Access Control (RBAC)',desc:'ตรวจสิทธิ์แต่ละ role ดู/แก้ไขอะไรได้บ้าง',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D04',cat:'dashboard',sub:'Auth & Layout',name:'Branch Selector + Date Bar',desc:'เลือกสาขา + เลือกช่วงวันที่ Date Range',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D05',cat:'dashboard',sub:'Auth & Layout',name:'Responsive Layout',desc:'ปรับ Layout ให้รองรับ Tablet / Mobile',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // พนักงาน
+  {id:'D06',cat:'dashboard',sub:'พนักงาน (Employee)',name:'Employee List + Search/Filter',desc:'รายชื่อพนักงาน กรองตามสาขา/สถานะ ค้นหาชื่อ',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D07',cat:'dashboard',sub:'พนักงาน (Employee)',name:'เพิ่มพนักงาน Modal (14+ fields)',desc:'ฟอร์มเพิ่มพนักงาน 6 หมวด: ข้อมูลพื้นฐาน, ประเภท, การจ่ายเงิน, คอม, วันหยุด, เบี้ยพิเศษ',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D08',cat:'dashboard',sub:'พนักงาน (Employee)',name:'แก้ไขข้อมูลพนักงาน',desc:'กดแก้ไข → เปิด Modal pre-fill → บันทึก + edit log',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D09',cat:'dashboard',sub:'พนักงาน (Employee)',name:'ดูรายละเอียดพนักงาน Modal',desc:'แสดงข้อมูลทั้งหมดแบบ Grid Layout + สรุปเงินเดือน',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D10',cat:'dashboard',sub:'พนักงาน (Employee)',name:'Deactivate / Resign พนักงาน',desc:'เปลี่ยนสถานะเป็น inactive + เหตุผล + วันที่ออก',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // ตารางงาน
+  {id:'D11',cat:'dashboard',sub:'ตารางงาน (Schedule)',name:'Weekly Schedule Grid View',desc:'ตาราง 7 วัน แสดงพนักงานแต่ละสาขา',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D12',cat:'dashboard',sub:'ตารางงาน (Schedule)',name:'Drag & Drop จัดเวร',desc:'ลากพนักงานไปวางในสาขา/วัน ที่ต้องการ',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D13',cat:'dashboard',sub:'ตารางงาน (Schedule)',name:'แถวตรวจจับปัญหา (3 แถว)',desc:'แถวสีแดง=สาขาว่าง, เหลือง=คนลา, เทา=พนง.ว่าง',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D14',cat:'dashboard',sub:'ตารางงาน (Schedule)',name:'ตั้งค่าสาขา Sub-Tab',desc:'แสดง Branch Config: min staff, operating hours ทุกสาขา',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D15',cat:'dashboard',sub:'ตารางงาน (Schedule)',name:'เพิ่มสาขา Modal',desc:'ฟอร์มเพิ่มสาขาใหม่: ชื่อ, code, region, min staff, เวลาเปิด-ปิด 7 วัน',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // การเข้างาน
+  {id:'D16',cat:'dashboard',sub:'การเข้างาน (Attendance)',name:'Daily Attendance Table',desc:'ตาราง CI/CO รายคน รายวัน + สถานะ สาย/ปกติ/ขาด',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D17',cat:'dashboard',sub:'การเข้างาน (Attendance)',name:'Weekly/Monthly Summary',desc:'สรุปวันทำงาน, สายกี่ครั้ง, ขาดกี่วัน ต่อพนักงาน',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D18',cat:'dashboard',sub:'การเข้างาน (Attendance)',name:'Edit Attendance Record',desc:'Admin แก้ไข CI/CO + บันทึก edited_by + reason',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D19',cat:'dashboard',sub:'การเข้างาน (Attendance)',name:'Performance Score Cards',desc:'คะแนนประสิทธิภาพ: สาย, ลืมพิมพ์, พักเกิน, วันทำงาน',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // เงินเดือน
+  {id:'D20',cat:'dashboard',sub:'เงินเดือน (Payroll)',name:'Payroll List + Cycle Filters',desc:'รายการเงินเดือน + 4 ปุ่มกรอง: ทั้งหมด/รายอาทิตย์/ครึ่งเดือน/รายเดือน',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D21',cat:'dashboard',sub:'เงินเดือน (Payroll)',name:'Payroll Calculation Display',desc:'แสดงสูตรคำนวณ: ค่าจ้าง + คอม + เบี้ย - หักสาย/ขาด - ปกส.',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D22',cat:'dashboard',sub:'เงินเดือน (Payroll)',name:'Payroll Slip / Detail View',desc:'ดูรายละเอียด breakdown แต่ละคน + สลิปเงินเดือน',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D23',cat:'dashboard',sub:'เงินเดือน (Payroll)',name:'Approve / Confirm Payroll',desc:'Admin ตรวจสอบ → ยืนยัน → เปลี่ยน status: draft→confirmed→paid',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // ตรวจสาขา
+  {id:'D24',cat:'dashboard',sub:'ตรวจสาขา (Inspection)',name:'เปิดร้าน — Daily Status Cards',desc:'แสดงสถานะเปิดร้านรายวัน ✅ เปิดแล้ว / ❌ ยังไม่เปิด',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D25',cat:'dashboard',sub:'ตรวจสาขา (Inspection)',name:'ตรวจสาขา Summary Cards',desc:'ผลตรวจแต่ละสาขา: ผ่าน/มีปัญหา + คะแนน',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D26',cat:'dashboard',sub:'ตรวจสาขา (Inspection)',name:'Inspection Detail View',desc:'ดูรายละเอียดแต่ละหัวข้อ: ทอน/ไฟ/กล้อง/รูป/สินค้า',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D27',cat:'dashboard',sub:'ตรวจสาขา (Inspection)',name:'Admin Review + Flag',desc:'Admin ตรวจ + approve/flag + บันทึก review_status',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D28',cat:'dashboard',sub:'ตรวจสาขา (Inspection)',name:'ตั้งค่าตรวจ Config Sub-Tab',desc:'แก้ไข CCTV count, shelf count, required photos, checklist per branch',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // ยอดขาย
+  {id:'D29',cat:'dashboard',sub:'ยอดขาย (Sales)',name:'Daily Sales by Branch',desc:'ยอดขายรายวัน breakdown: เงินสด/เครดิต/QR/โอน',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D30',cat:'dashboard',sub:'ยอดขาย (Sales)',name:'Sales Comparison Chart',desc:'กราฟเปรียบเทียบยอดขายระหว่างสาขา/ช่วงเวลา',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D31',cat:'dashboard',sub:'ยอดขาย (Sales)',name:'Edit Sales Record + Log',desc:'Admin แก้ไขยอด + บันทึก old/new value + reason',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D32',cat:'dashboard',sub:'ยอดขาย (Sales)',name:'Sales Approval Flow',desc:'ตรวจสอบ → ยืนยัน → status: pending→confirmed',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // ฝากเงิน
+  {id:'D33',cat:'dashboard',sub:'ฝากเงิน (Deposits)',name:'Deposit List + Remaining Balance',desc:'รายการฝากเงิน + ยอดค้างฝาก ต่อสาขา/วัน',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D34',cat:'dashboard',sub:'ฝากเงิน (Deposits)',name:'Slip Verification',desc:'ดูรูปสลิปฝากเงิน + เทียบยอด + approve/reject',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D35',cat:'dashboard',sub:'ฝากเงิน (Deposits)',name:'Approve/Reject Deposit',desc:'Owner ตรวจสลิป → ยืนยัน/ปฏิเสธ + เหตุผล',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // บัญชี
+  {id:'D36',cat:'dashboard',sub:'บัญชี (Account & Bank)',name:'Bank Account Summary',desc:'สรุปยอดฝากแต่ละบัญชี + จำนวนรายการ',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D37',cat:'dashboard',sub:'บัญชี (Account & Bank)',name:'Bank Account CRUD',desc:'เพิ่ม/แก้ไข/ลบ บัญชีธนาคาร (ชื่อ, ธนาคาร, เลขบัญชี)',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D38',cat:'dashboard',sub:'บัญชี (Account & Bank)',name:'Reconciliation View',desc:'เทียบยอดฝากใน Dashboard กับ Statement จริง',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // แจ้งเตือน
+  {id:'D39',cat:'dashboard',sub:'แจ้งเตือน (Alerts)',name:'Alert List + Filter by Type',desc:'รายการแจ้งเตือน กรอง: สาย/ขาด/กลับก่อน/ไม่CO/พักเกิน',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D40',cat:'dashboard',sub:'แจ้งเตือน (Alerts)',name:'Acknowledge Alert',desc:'Admin กดรับทราบ → เปลี่ยน status: unread→acked',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D41',cat:'dashboard',sub:'แจ้งเตือน (Alerts)',name:'Link Alert → Warning Letter',desc:'กดปุ่ม "ออกใบเตือน" จาก alert → เปิด create warning',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // หนังสือเตือน
+  {id:'D42',cat:'dashboard',sub:'หนังสือเตือน (Warning)',name:'Warning Letter List + Status',desc:'รายการหนังสือเตือน สถานะ: pending/sent/signed',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D43',cat:'dashboard',sub:'หนังสือเตือน (Warning)',name:'Create Warning Letter',desc:'เลือกพนง. → เลือก template (ด้วยวาจา/ลายลักษณ์/ร้ายแรง) → กรอกเหตุผล',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D44',cat:'dashboard',sub:'หนังสือเตือน (Warning)',name:'Send via LINE + Track Signature',desc:'กด "ส่ง LIFF" → push DM พนง. → ติดตามสถานะเซ็น',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // ลางาน
+  {id:'D45',cat:'dashboard',sub:'ลางาน (Leave)',name:'Leave Request List',desc:'รายการขอลา กรองตาม: ประเภท/สถานะ/สาขา',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D46',cat:'dashboard',sub:'ลางาน (Leave)',name:'Approve / Reject Leave',desc:'ผจก. อนุมัติ/ปฏิเสธ + เหตุผล → แจ้ง LINE',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D47',cat:'dashboard',sub:'ลางาน (Leave)',name:'Leave Balance & Statistics',desc:'สรุปวันลาคงเหลือ + สถิติการลาแต่ละประเภท',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // ตั้งค่า
+  {id:'D48',cat:'dashboard',sub:'ตั้งค่า (Settings)',name:'Alert Thresholds Config',desc:'ตั้ง threshold สาย/ขาด/พักเกิน สำหรับ auto-alert',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D49',cat:'dashboard',sub:'ตั้งค่า (Settings)',name:'Cron Schedule Config',desc:'ตั้งเวลา cron: เปิดร้าน 08:30, ปิดร้าน 20:00, สรุป 21:00',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'D50',cat:'dashboard',sub:'ตั้งค่า (Settings)',name:'LINE OA Config',desc:'ตั้งค่า LINE Channel, LIFF URL, group IDs',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // ===== LINE OA =====
+  // Bot Core
+  {id:'L01',cat:'line',sub:'Bot Core Setup',name:'LINE Messaging API Setup',desc:'สร้าง Channel, ตั้ง Webhook URL, ตั้ง Channel Token',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L02',cat:'line',sub:'Bot Core Setup',name:'Webhook Endpoint + Keyword Parser',desc:'POST /api/line/webhook รับทุก message → parse keyword เข้างาน/เลิกงาน/เริ่มพัก/เลิกพัก',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L03',cat:'line',sub:'Bot Core Setup',name:'User-Employee Matching',desc:'จับคู่ LINE userId กับ emp_id ในระบบ (register ผ่าน LIFF)',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L04',cat:'line',sub:'Bot Core Setup',name:'Group Chat Management',desc:'จัดการกลุ่มสาขา (group IDs) + ตรวจว่าข้อความมาจากกลุ่มไหน',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // Flex เปิดร้าน
+  {id:'L05',cat:'line',sub:'Flex — เปิดร้าน (F1-F3)',name:'F1 Bot Push เปิดร้าน (cron 08:30)',desc:'Push Flex ไปกลุ่มสาขา มีปุ่ม "📸 เปิดร้านตอนนี้" → เปิด LIFF',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L06',cat:'line',sub:'Flex — เปิดร้าน (F1-F3)',name:'F2 ผลเปิดร้าน ✅ (after LIFF)',desc:'Flex แสดงผลเปิดร้าน: เวลา + ตรงเวลา/สาย + thumbnail',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L07',cat:'line',sub:'Flex — เปิดร้าน (F1-F3)',name:'F3 เตือนสาขาไม่เปิด ⚠️ (cron 09:15)',desc:'ตรวจ store_openings สาขาไหนยังไม่มี record → ส่ง Flex',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // Flex ตรวจสาขา
+  {id:'L08',cat:'line',sub:'Flex — ตรวจสาขา (F4)',name:'F4 ผลตรวจสาขา 📋 (after LIFF)',desc:'Flex สรุปผลตรวจ 4 หัวข้อ: ทอน/ไฟ/รูป/สินค้า + ผ่าน/มีปัญหา',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // Flex ปิดร้าน
+  {id:'L09',cat:'line',sub:'Flex — ปิดร้าน/ยอดขาย (F5-F6)',name:'F5 Bot Push ปิดร้าน (cron 20:00)',desc:'Push Flex ไปกลุ่มสาขา มีปุ่ม "📊 ส่งยอดปิดร้าน" → LIFF',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L10',cat:'line',sub:'Flex — ปิดร้าน/ยอดขาย (F5-F6)',name:'F6 สรุปยอดขาย 💰 (after LIFF)',desc:'Flex ยอดรวม + breakdown 4 ช่องทาง + ฝากธนาคาร',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // Flex Attendance
+  {id:'L11',cat:'line',sub:'Flex — Attendance (F14-F15)',name:'F14 ตอกบัตรยืนยัน (keyword trigger)',desc:'พนง.พิมพ์ "เข้างาน"/"เลิกงาน" → Bot ตอบ Flex CI/CO',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L12',cat:'line',sub:'Flex — Attendance (F14-F15)',name:'F15 เตือนยังไม่ CI ⏰ (cron)',desc:'Cron: เลยเวลากะ 15 นาที → ตรวจ SCHEDULE vs ATTENDANCE → ส่งกลุ่ม',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // Flex Alert
+  {id:'L13',cat:'line',sub:'Flex — Alert (F7-F11)',name:'F7 แจ้งเตือนสาย → DM พนักงาน',desc:'Auto trigger: clock_in > schedule.start → Push DM พนักงานคนนั้น',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L14',cat:'line',sub:'Flex — Alert (F7-F11)',name:'F8 แจ้งเตือนขาด → DM พนักงาน',desc:'Auto: ไม่ CI + ไม่มี leave → Push DM พนักงาน',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L15',cat:'line',sub:'Flex — Alert (F7-F11)',name:'F9 แจ้งเตือนกลับก่อน → DM พนักงาน',desc:'Auto: clock_out < schedule.end → Push DM พนักงาน',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L16',cat:'line',sub:'Flex — Alert (F7-F11)',name:'F10 แจ้งเตือนไม่ CO → DM พนักงาน',desc:'Auto: มี CI ไม่มี CO เมื่อเลยเวลา → Push DM',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L17',cat:'line',sub:'Flex — Alert (F7-F11)',name:'F11 สรุปแจ้งเตือนรายวัน → กลุ่มสาขา',desc:'Cron 21:00 → Aggregate att_alerts วันนี้ → ส่ง Flex สรุปเข้ากลุ่ม',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // Flex Warning & Leave
+  {id:'L18',cat:'line',sub:'Flex — Warning & Leave (F12-F13)',name:'F12 หนังสือเตือน → DM พนักงาน',desc:'Admin กด "ส่ง" จาก Dashboard → Push DM + ปุ่ม LIFF เซ็นรับ',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L19',cat:'line',sub:'Flex — Warning & Leave (F12-F13)',name:'F13 เซ็นรับทราบแล้ว → DM พนักงาน',desc:'พนง.เซ็น Canvas ใน LIFF → Bot แจ้ง DM ว่าเซ็นสำเร็จ',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L20',cat:'line',sub:'Flex — Warning & Leave (F12-F13)',name:'Flex ขอลา (Leave Request)',desc:'พนง.พิมพ์ "ขอลา" → Bot แสดงตัวเลือก → กรอกรายละเอียด → submit',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L21',cat:'line',sub:'Flex — Warning & Leave (F12-F13)',name:'Flex แจ้งผลอนุมัติลา',desc:'ผจก.อนุมัติ/ปฏิเสธ → Push Flex แจ้งผล DM พนักงาน',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L22',cat:'line',sub:'Flex — Warning & Leave (F12-F13)',name:'Flex สรุปเงินเดือน (Payroll)',desc:'Cron สิ้นรอบจ่าย → Push Flex สรุปเงินเดือน DM พนักงาน',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // LIFF Apps
+  {id:'L23',cat:'line',sub:'LIFF Apps',name:'LIFF เปิดร้าน',desc:'ถ่ายรูปหน้าร้าน 1-2 รูป → submit → F2',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L24',cat:'line',sub:'LIFF Apps',name:'LIFF ตรวจสาขา',desc:'เช็คเงินทอน + ไฟ/กล้อง/เน็ต + ถ่ายรูป + นับสินค้า → submit → F4',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L25',cat:'line',sub:'LIFF Apps',name:'LIFF ปิดร้าน',desc:'กรอกยอดขาย 4 ช่องทาง + ถ่ายสลิป EDC + เลือกบัญชีฝาก → submit → F6',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L26',cat:'line',sub:'LIFF Apps',name:'LIFF หนังสือเตือน (Canvas Sign)',desc:'พนง.อ่านหนังสือเตือน + เซ็นชื่อบน Canvas → submit → F13',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L27',cat:'line',sub:'LIFF Apps',name:'LIFF ขอลา',desc:'เลือกประเภทลา + วันที่ + เหตุผล → submit → แจ้งผจก.',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // Cron Jobs
+  {id:'L28',cat:'line',sub:'Cron Jobs',name:'Cron เปิดร้าน 08:30',desc:'POST /api/line/push/open-reminder → Push F1 ทุกกลุ่มสาขา',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L29',cat:'line',sub:'Cron Jobs',name:'Cron เตือนไม่เปิด 09:15',desc:'POST /api/line/push/open-warning → Push F3 สาขาที่ยังไม่เปิด',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L30',cat:'line',sub:'Cron Jobs',name:'Cron เตือนไม่ CI (every 15 min)',desc:'POST /api/line/push/ci-reminder → Push F15 พนง.ที่ยังไม่ CI',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L31',cat:'line',sub:'Cron Jobs',name:'Cron ปิดร้าน 20:00',desc:'POST /api/line/push/closing-reminder → Push F5 ทุกกลุ่มสาขา',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'L32',cat:'line',sub:'Cron Jobs',name:'Cron สรุปแจ้งเตือน 21:00',desc:'POST /api/line/push/daily-summary → Push F11 สรุปเข้ากลุ่ม',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // ===== DATABASE & API =====
+  // Schema
+  {id:'B01',cat:'database',sub:'DB Schema Design',name:'EMPLOYEES Table',desc:'emp_id, name, nickname, position, branches, pay_type/cycle, wage, commission, etc.',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B02',cat:'database',sub:'DB Schema Design',name:'BRANCHES Table',desc:'branch_id, name, region, min_staff_weekday/weekend, operating_hours JSON',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B03',cat:'database',sub:'DB Schema Design',name:'ATTENDANCE Table',desc:'att_id, emp_id, branch_id, date, clock_in/out, break_start/end, is_late, late_min, work_hours',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B04',cat:'database',sub:'DB Schema Design',name:'SCHEDULE Table',desc:'schedule_id, emp_id, branch_id, date, shift_start/end, is_off',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B05',cat:'database',sub:'DB Schema Design',name:'DAILY_SALES Table',desc:'sale_id, branch_id, date, cash/credit/qr/transfer, total, order_count, status',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B06',cat:'database',sub:'DB Schema Design',name:'DEPOSITS Table',desc:'deposit_id, branch_id, date, expected/deposit_amount, remaining, slip_photo, status',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B07',cat:'database',sub:'DB Schema Design',name:'BANK_ACCOUNTS Table',desc:'account_id, name, bank, account_no, is_active',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B08',cat:'database',sub:'DB Schema Design',name:'INSPECTIONS Table',desc:'insp_id, branch_id, emp_id, date, change_money, utilities, store_photos, inventory, result',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B09',cat:'database',sub:'DB Schema Design',name:'STORE_OPENINGS Table',desc:'opening_id, branch_id, emp_id, date, time, isLate, lateMin, photos',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B10',cat:'database',sub:'DB Schema Design',name:'CLOSING_REPORTS Table',desc:'closing_id, branch_id, emp_id, date, checklist, photos',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B11',cat:'database',sub:'DB Schema Design',name:'ATT_ALERTS Table',desc:'alert_id, emp_id, type(late/absent/early/no_co), date, detail, status(unread/acked)',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B12',cat:'database',sub:'DB Schema Design',name:'WARNING_LETTERS Table',desc:'warning_id, emp_id, level, reason, body, status(pending/signed), signature_url',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B13',cat:'database',sub:'DB Schema Design',name:'PAYROLL Table',desc:'payroll_id, emp_id, period_start/end, pay_cycle, base_wage, deductions, commission, net_pay, status',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B14',cat:'database',sub:'DB Schema Design',name:'LEAVES Table',desc:'leave_id, emp_id, type, start_date, end_date, reason, status(pending/approved/rejected)',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B15',cat:'database',sub:'DB Schema Design',name:'BRANCH_INSPECTION_CONFIG Table',desc:'branch_id, cctv_count, shelf_count, required_photos JSON, checklist_items JSON, inventory_items',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // API Endpoints
+  {id:'B16',cat:'database',sub:'API — CRUD Endpoints',name:'API: Employees CRUD',desc:'GET/POST/PUT/DELETE /api/employees — รวม search, filter by branch/status',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B17',cat:'database',sub:'API — CRUD Endpoints',name:'API: Branches CRUD',desc:'GET/POST/PUT /api/branches — รวม config update',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B18',cat:'database',sub:'API — CRUD Endpoints',name:'API: Attendance CRUD',desc:'GET/POST/PUT /api/attendance — รวม summary, edit record',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B19',cat:'database',sub:'API — CRUD Endpoints',name:'API: Schedule CRUD',desc:'GET/POST/PUT/DELETE /api/schedule — รวม bulk assign',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B20',cat:'database',sub:'API — CRUD Endpoints',name:'API: Sales CRUD',desc:'GET/POST/PUT /api/sales — รวม approve, edit + log',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B21',cat:'database',sub:'API — CRUD Endpoints',name:'API: Deposits CRUD',desc:'GET/POST/PUT /api/deposits — รวม approve/reject, remaining calc',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B22',cat:'database',sub:'API — CRUD Endpoints',name:'API: Inspections CRUD',desc:'GET/POST /api/inspections — รวม review status update',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B23',cat:'database',sub:'API — CRUD Endpoints',name:'API: Warning Letters CRUD',desc:'GET/POST/PUT /api/warnings — รวม send LINE, track signature',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B24',cat:'database',sub:'API — CRUD Endpoints',name:'API: Payroll CRUD',desc:'GET/POST/PUT /api/payroll — รวม calculate, approve',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B25',cat:'database',sub:'API — CRUD Endpoints',name:'API: Leaves CRUD',desc:'GET/POST/PUT /api/leaves — รวม approve/reject',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // Business Logic
+  {id:'B26',cat:'database',sub:'Business Logic Engines',name:'Alert Engine (Auto-trigger)',desc:'ตรวจจับสาย/ขาด/กลับก่อน/ไม่CO อัตโนมัติ → insert ATT_ALERTS → trigger LINE push',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B27',cat:'database',sub:'Business Logic Engines',name:'Payroll Calculation Engine',desc:'คำนวณ: ค่าจ้าง + คอม + เบี้ย - หักสาย/ขาด รองรับ 3 deduction modes',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B28',cat:'database',sub:'Business Logic Engines',name:'Schedule Conflict Detection',desc:'ตรวจจับ: สาขาว่าง, คนไม่พอ, พนง.ซ้ำสาขา, ตารางชนลา',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B29',cat:'database',sub:'Business Logic Engines',name:'Deposit Reconciliation Logic',desc:'คำนวณ remaining = expected - SUM(deposited) + ฝากหลายครั้ง',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B30',cat:'database',sub:'Business Logic Engines',name:'Sales OCR Parser',desc:'Parse ข้อความยอดขายจาก LINE chat → แยก cash/credit/qr/transfer',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // Supabase Setup
+  {id:'B31',cat:'database',sub:'Supabase / Infra',name:'Supabase Project Setup',desc:'สร้าง project + ตั้งค่า database + initial migration',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B32',cat:'database',sub:'Supabase / Infra',name:'Row Level Security (RLS)',desc:'ตั้ง RLS policies ตาม role: owner เห็นทุกสาขา, ผจก.เห็นสาขาตัวเอง',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B33',cat:'database',sub:'Supabase / Infra',name:'Edge Functions (LINE Webhook)',desc:'Supabase Edge Functions สำหรับ LINE webhook + cron triggers',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B34',cat:'database',sub:'Supabase / Infra',name:'Storage (Photos, Slips, Signatures)',desc:'Supabase Storage buckets: store-photos, slips, signatures + policies',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B35',cat:'database',sub:'Supabase / Infra',name:'Realtime Subscriptions',desc:'Supabase Realtime สำหรับ live update: attendance, alerts, sales',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+
+  // Auth & Security
+  {id:'B36',cat:'database',sub:'Auth & Security',name:'User Authentication (Supabase Auth)',desc:'Login/logout, JWT tokens, session management',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B37',cat:'database',sub:'Auth & Security',name:'Role-Based Access Middleware',desc:'Middleware ตรวจ role ก่อนเข้า API: owner/manager/staff',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B38',cat:'database',sub:'Auth & Security',name:'API Rate Limiting',desc:'จำกัด request rate ป้องกัน abuse',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''},
+  {id:'B39',cat:'database',sub:'Auth & Security',name:'Data Validation & Sanitization',desc:'Validate ทุก input ก่อนเข้า DB + sanitize HTML/SQL',assignee:'',status:'todo',cs:'',ce:'',ts:'',te:'',dp:'',rc:'',note:''}
+];
+
+// ============ CATEGORIES CONFIG ============
+var CATS = {
+  dashboard: {icon:'📊', title:'Dashboard', color:'#3b82f6'},
+  line: {icon:'💬', title:'LINE OA (Flex + LIFF + Bot)', color:'#06C755'},
+  database: {icon:'🗄️', title:'Database & API', color:'#f59e0b'}
+};
+
+var STATUS_LABELS = {
+  todo:'📋 ยังไม่เริ่ม', coding:'💻 Coding', testing:'🧪 Testing',
+  deploy:'🚀 Deploy', recheck:'🔍 Recheck', done:'✅ Done', blocked:'🚫 Blocked'
+};
+
+// ============ TIMELINE CONFIG ============
+var TL_START, TL_END, TL_DAYS_COUNT;
+var DAY_W = 28;
+var collapsedCats = {};
+var collapsedSubs = {};
+var editingTaskId = null;
+
+function initTimeline(){
+  var today = new Date();
+  TL_START = new Date(today.getFullYear(), today.getMonth(), 1);
+  TL_END = new Date(today.getFullYear(), today.getMonth() + 4, 0);
+  TL_DAYS_COUNT = Math.ceil((TL_END - TL_START) / 86400000) + 1;
+}
+
+function loadState(){
+  try{
+    var saved = localStorage.getItem('cruzy_gantt_v3');
+    if(saved){
+      var data = JSON.parse(saved);
+      data.forEach(function(s){
+        var t = TASKS.find(function(x){return x.id === s.id});
+        if(t){
+          // Update existing task
+          t.assignee = s.assignee || '';
+          t.status = s.status || 'todo';
+          t.cs = s.cs || '';
+          t.ce = s.ce || '';
+          t.ts = s.ts || '';
+          t.te = s.te || '';
+          t.dp = s.dp || '';
+          t.rc = s.rc || '';
+          t.note = s.note || '';
+        } else if(s.id && s.id.indexOf('X')===0 && s.cat && s.sub && s.name){
+          // Restore custom-added task
+          TASKS.push({id:s.id,cat:s.cat,sub:s.sub,name:s.name,desc:s.desc||'',assignee:s.assignee||'',status:s.status||'todo',cs:s.cs||'',ce:s.ce||'',ts:s.ts||'',te:s.te||'',dp:s.dp||'',rc:s.rc||'',note:s.note||''});
+        }
+      });
+    }
+  }catch(e){}
+}
+
+function saveState(){
+  try{
+    var data = TASKS.map(function(t){
+      return {id:t.id,cat:t.cat,sub:t.sub,name:t.name,desc:t.desc,assignee:t.assignee,status:t.status,cs:t.cs,ce:t.ce,ts:t.ts,te:t.te,dp:t.dp,rc:t.rc,note:t.note};
+    });
+    localStorage.setItem('cruzy_gantt_v3', JSON.stringify(data));
+    showToast('💾 บันทึกเรียบร้อย!');
+  }catch(e){showToast('❌ บันทึกไม่สำเร็จ','error')}
+}
+
+function showToast(msg,type){
+  var el = document.createElement('div');
+  el.style.cssText = 'position:fixed;top:20px;right:20px;background:'+(type==='error'?'#ef4444':'#1B5E20')+';color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.25);font-family:inherit;animation:fadeIn .3s';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(function(){el.remove()},2500);
+}
+
+// ============ FILTER ============
+function getFilteredTasks(){
+  var cat = document.getElementById('filterCat').value;
+  var status = document.getElementById('filterStatus').value;
+  var search = document.getElementById('searchInput').value.toLowerCase();
+  return TASKS.filter(function(t){
+    if(cat !== 'all' && t.cat !== cat) return false;
+    if(status !== 'all' && t.status !== status) return false;
+    if(search && t.id.toLowerCase().indexOf(search) === -1 && t.name.toLowerCase().indexOf(search) === -1 && t.sub.toLowerCase().indexOf(search) === -1 && (t.assignee||'').toLowerCase().indexOf(search) === -1) return false;
+    return true;
+  });
+}
+
+// ============ RENDER ============
+function render(){
+  var filtered = getFilteredTasks();
+  renderStats(filtered);
+  renderTaskPanel(filtered);
+  renderTimeline(filtered);
+  syncScroll();
+}
+
+function renderStats(filtered){
+  var total = filtered.length;
+  var done = filtered.filter(function(t){return t.status==='done'}).length;
+  var coding = filtered.filter(function(t){return t.status==='coding'}).length;
+  var testing = filtered.filter(function(t){return t.status==='testing'}).length;
+  var todo = filtered.filter(function(t){return t.status==='todo'}).length;
+  var pct = total ? Math.round(done/total*100) : 0;
+  document.getElementById('stats').innerHTML =
+    '<div class="stat-box"><div class="stat-num">'+total+'</div><div class="stat-label">ทั้งหมด</div></div>'+
+    '<div class="stat-box"><div class="stat-num" style="color:#69F0AE">'+done+'</div><div class="stat-label">✅ Done</div></div>'+
+    '<div class="stat-box"><div class="stat-num" style="color:#60a5fa">'+coding+'</div><div class="stat-label">💻 Coding</div></div>'+
+    '<div class="stat-box"><div class="stat-num" style="color:#fbbf24">'+testing+'</div><div class="stat-label">🧪 Testing</div></div>'+
+    '<div class="stat-box"><div class="stat-num">'+todo+'</div><div class="stat-label">📋 Todo</div></div>'+
+    '<div class="stat-box"><div class="stat-num" style="color:#69F0AE">'+pct+'%</div><div class="stat-label">Progress</div></div>';
+}
+
+function renderTaskPanel(filtered){
+  var panel = document.getElementById('taskPanel');
+  var html = '';
+
+  // Table header
+  html += '<div class="table-header"><div class="th">ID</div><div class="th">Task</div><div class="th">ผู้รับผิดชอบ</div><div class="th">สถานะ</div><div class="th th-code">Coding</div><div class="th th-test">Test</div><div class="th th-dep">Deploy</div><div class="th th-rec">Recheck</div></div>';
+
+  // Group by cat then sub
+  var cats = ['dashboard','line','database'];
+  cats.forEach(function(catKey){
+    var catTasks = filtered.filter(function(t){return t.cat === catKey});
+    if(catTasks.length === 0) return;
+
+    var cfg = CATS[catKey];
+    var catDone = catTasks.filter(function(t){return t.status==='done'}).length;
+    var catPct = Math.round(catDone/catTasks.length*100);
+    var isCollapsed = collapsedCats[catKey];
+
+    html += '<div class="cat-header'+(isCollapsed?' collapsed':'')+'" onclick="toggleCat(\''+catKey+'\')" style="border-left:4px solid '+cfg.color+'">';
+    html += '<span class="cat-icon">'+cfg.icon+'</span>';
+    html += '<span class="cat-title">'+cfg.title+'</span>';
+    html += '<span class="cat-count">'+catTasks.length+' tasks</span>';
+    html += '<div class="cat-progress"><div class="cat-progress-bar" style="width:'+catPct+'%"></div></div>';
+    html += '<span style="font-size:10px;margin:0 4px">'+catPct+'%</span>';
+    html += '<span class="cat-arrow">▼</span>';
+    html += '</div>';
+
+    if(isCollapsed) return;
+
+    // Sub categories
+    var subs = [];
+    catTasks.forEach(function(t){if(subs.indexOf(t.sub)===-1)subs.push(t.sub)});
+
+    subs.forEach(function(subName){
+      var subTasks = catTasks.filter(function(t){return t.sub === subName});
+      var subKey = catKey+'_'+subName;
+      var subCollapsed = collapsedSubs[subKey];
+      var subDone = subTasks.filter(function(t){return t.status==='done'}).length;
+
+      html += '<div class="subcat-header" onclick="toggleSub(\''+subKey+'\')">';
+      html += '<span style="font-size:12px">'+(subCollapsed?'▶':'▼')+'</span> ';
+      html += subName;
+      html += '<span class="subcat-count">'+subDone+'/'+subTasks.length+'</span>';
+      html += '</div>';
+
+      if(subCollapsed) return;
+
+      subTasks.forEach(function(t){
+        html += '<div class="task-row" ondblclick="openModal(\''+t.id+'\')" title="ดับเบิลคลิกเพื่อแก้ไข">';
+        html += '<div class="task-cell task-id">'+t.id+'</div>';
+        html += '<div class="task-cell task-name">'+t.name+'<span class="desc">'+t.desc+'</span></div>';
+        html += '<div class="task-cell"><input value="'+(t.assignee||'')+'" placeholder="—" onchange="updateField(\''+t.id+'\',\'assignee\',this.value)" style="width:100%;padding:2px 4px;border:1px solid transparent;border-radius:4px;font-size:10px;background:transparent;outline:none;font-family:inherit" onfocus="this.style.borderColor=\'#1B5E20\';this.style.background=\'#fff\'" onblur="this.style.borderColor=\'transparent\';this.style.background=\'transparent\'"></div>';
+        html += '<div class="task-cell"><span class="status-badge status-'+t.status+'" onclick="cycleStatus(\''+t.id+'\')" style="cursor:pointer" title="คลิกเพื่อเปลี่ยนสถานะ">'+(STATUS_LABELS[t.status]||t.status)+'</span></div>';
+        html += '<div class="task-cell"><input type="date" value="'+(t.cs||'')+'" onchange="updateField(\''+t.id+'\',\'cs\',this.value);updateField(\''+t.id+'\',\'status\',\'coding\')"></div>';
+        html += '<div class="task-cell"><input type="date" value="'+(t.ts||'')+'" onchange="updateField(\''+t.id+'\',\'ts\',this.value)"></div>';
+        html += '<div class="task-cell"><input type="date" value="'+(t.dp||'')+'" onchange="updateField(\''+t.id+'\',\'dp\',this.value)"></div>';
+        html += '<div class="task-cell"><input type="date" value="'+(t.rc||'')+'" onchange="updateField(\''+t.id+'\',\'rc\',this.value)"></div>';
+        html += '</div>';
+      });
+      // Add task button per sub-category
+      var escapedSub = subName.replace(/'/g,"\\'");
+      html += '<button class="add-task-btn" onclick="openAddModal(\''+catKey+'\',\''+escapedSub+'\')">➕ เพิ่ม Task ใน ' + subName + '</button>';
+    });
+  });
+
+  panel.innerHTML = html;
+}
+
+function renderTimeline(filtered){
+  var panel = document.getElementById('timelinePanel');
+  var html = '';
+
+  // Timeline header
+  html += '<div style="position:sticky;top:0;z-index:11;background:#f8fafc">';
+  html += '<div style="display:flex;min-width:'+(TL_DAYS_COUNT*DAY_W)+'px">';
+
+  // Month headers
+  var months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var d = new Date(TL_START);
+  var curMonth = -1;
+  var monthCells = [];
+  var monthStart = 0;
+  for(var i=0; i<TL_DAYS_COUNT; i++){
+    var dd = new Date(TL_START.getTime() + i*86400000);
+    var m = dd.getMonth();
+    if(m !== curMonth){
+      if(curMonth !== -1) monthCells.push({month:curMonth,year:dd.getFullYear(),start:monthStart,count:i-monthStart});
+      curMonth = m;
+      monthStart = i;
+    }
+  }
+  monthCells.push({month:curMonth,year:new Date(TL_START.getTime()+(TL_DAYS_COUNT-1)*86400000).getFullYear(),start:monthStart,count:TL_DAYS_COUNT-monthStart});
+
+  monthCells.forEach(function(mc){
+    html += '<div style="width:'+(mc.count*DAY_W)+'px;text-align:center;font-size:11px;font-weight:700;padding:4px 0;border-right:1px solid var(--border);border-bottom:1px solid var(--border);color:var(--text)">'+months[mc.month]+' '+(mc.year+543)+'</div>';
+  });
+  html += '</div>';
+
+  // Day headers
+  html += '<div style="display:flex;min-width:'+(TL_DAYS_COUNT*DAY_W)+'px">';
+  var today = new Date(); today.setHours(0,0,0,0);
+  for(var i=0; i<TL_DAYS_COUNT; i++){
+    var dd = new Date(TL_START.getTime() + i*86400000);
+    var dow = dd.getDay();
+    var isWe = dow===0||dow===6;
+    var isToday = dd.getTime()===today.getTime();
+    html += '<div class="tl-day'+(isWe?' weekend':'')+(isToday?' today':'')+'" style="width:'+DAY_W+'px">'+dd.getDate()+'</div>';
+  }
+  html += '</div></div>';
+
+  // Task rows
+  var cats = ['dashboard','line','database'];
+  cats.forEach(function(catKey){
+    var catTasks = filtered.filter(function(t){return t.cat===catKey});
+    if(catTasks.length===0) return;
+
+    // Cat header row
+    html += '<div class="tl-cat-header" style="min-height:38px;min-width:'+(TL_DAYS_COUNT*DAY_W)+'px"></div>';
+
+    if(collapsedCats[catKey]) return;
+
+    var subs = [];
+    catTasks.forEach(function(t){if(subs.indexOf(t.sub)===-1)subs.push(t.sub)});
+
+    subs.forEach(function(subName){
+      var subTasks = catTasks.filter(function(t){return t.sub===subName});
+      var subKey = catKey+'_'+subName;
+
+      // Sub header row
+      html += '<div class="tl-subcat-header" style="min-height:30px;min-width:'+(TL_DAYS_COUNT*DAY_W)+'px"></div>';
+
+      if(collapsedSubs[subKey]) return;
+
+      subTasks.forEach(function(t){
+        html += '<div class="tl-row" style="min-width:'+(TL_DAYS_COUNT*DAY_W)+'px">';
+        // Background cells
+        for(var i=0; i<TL_DAYS_COUNT; i++){
+          var dd = new Date(TL_START.getTime()+i*86400000);
+          var dow = dd.getDay();
+          var isWe = dow===0||dow===6;
+          var isToday = dd.getTime()===today.getTime();
+          html += '<div class="tl-cell'+(isWe?' weekend':'')+(isToday?' today':'')+'" style="width:'+DAY_W+'px"></div>';
+        }
+        // Gantt bars
+        html += renderBars(t);
+        html += '</div>';
+      });
+      // Add-task button row placeholder
+      html += '<div style="min-height:34px;min-width:'+(TL_DAYS_COUNT*DAY_W)+'px;border-bottom:1px solid #f1f5f9"></div>';
+    });
+  });
+
+  // Today line
+  var todayIdx = Math.floor((today - TL_START) / 86400000);
+  if(todayIdx >= 0 && todayIdx < TL_DAYS_COUNT){
+    html += '<div class="today-line" style="left:'+(todayIdx*DAY_W+DAY_W/2)+'px;top:0;height:100%;position:absolute"></div>';
+  }
+
+  panel.innerHTML = '<div style="position:relative;min-width:'+(TL_DAYS_COUNT*DAY_W)+'px">'+html+'</div>';
+}
+
+function renderBars(t){
+  var html = '';
+  // Coding bar
+  if(t.cs){
+    var cs = parseDate(t.cs);
+    var ce = t.ce ? parseDate(t.ce) : cs;
+    html += makeBar(cs,ce,'coding',t);
+  }
+  // Test bar
+  if(t.ts){
+    var ts = parseDate(t.ts);
+    var te = t.te ? parseDate(t.te) : ts;
+    html += makeBar(ts,te,'testing',t);
+  }
+  // Deploy bar
+  if(t.dp){
+    var dp = parseDate(t.dp);
+    html += makeBar(dp,dp,'deploy',t);
+  }
+  // Recheck bar
+  if(t.rc){
+    var rc = parseDate(t.rc);
+    html += makeBar(rc,rc,'recheck',t);
+  }
+  return html;
+}
+
+function makeBar(start,end,phase,t){
+  var s = Math.floor((start-TL_START)/86400000);
+  var e = Math.floor((end-TL_START)/86400000);
+  if(e < 0 || s >= TL_DAYS_COUNT) return '';
+  s = Math.max(0,s);
+  e = Math.min(TL_DAYS_COUNT-1,e);
+  var left = s*DAY_W;
+  var width = (e-s+1)*DAY_W;
+  var labels = {coding:'Coding',testing:'Test',deploy:'Deploy',recheck:'Recheck'};
+  return '<div class="gantt-bar '+phase+'" style="left:'+left+'px;width:'+width+'px" onmouseenter="showTip(event,\''+t.id+'\',\''+phase+'\')" onmouseleave="hideTip()" title="'+t.id+' '+labels[phase]+'"></div>';
+}
+
+function parseDate(s){
+  var p = s.split('-');
+  return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
+}
+
+// ============ INTERACTIONS ============
+function toggleCat(key){
+  collapsedCats[key] = !collapsedCats[key];
+  render();
+}
+function toggleSub(key){
+  collapsedSubs[key] = !collapsedSubs[key];
+  render();
+}
+function expandAll(){
+  collapsedCats={};collapsedSubs={};
+  render();
+}
+function collapseAll(){
+  Object.keys(CATS).forEach(function(k){collapsedCats[k]=true});
+  render();
+}
+
+function updateField(id,field,value){
+  var t = TASKS.find(function(x){return x.id===id});
+  if(t){t[field]=value; render();}
+}
+
+function cycleStatus(id){
+  var t = TASKS.find(function(x){return x.id===id});
+  if(!t) return;
+  var order = ['todo','coding','testing','deploy','recheck','done'];
+  var i = order.indexOf(t.status);
+  t.status = order[(i+1)%order.length];
+  render();
+}
+
+// Modal — Edit mode
+var isAddMode = false;
+
+function openModal(id){
+  var t = TASKS.find(function(x){return x.id===id});
+  if(!t) return;
+  isAddMode = false;
+  editingTaskId = id;
+  document.getElementById('mIdField').style.display = '';
+  document.getElementById('mCatField').style.display = 'none';
+  document.getElementById('mSubField').style.display = 'none';
+  document.getElementById('btnDelete').style.display = t.id.indexOf('X')===0 ? '' : 'none'; // only custom tasks
+  document.getElementById('btnSave').textContent = '💾 บันทึก';
+  document.getElementById('mId').value = t.id;
+  document.getElementById('mName').value = t.name;
+  document.getElementById('mDesc').value = t.desc;
+  document.getElementById('mAssignee').value = t.assignee || '';
+  document.getElementById('mStatus').value = t.status;
+  document.getElementById('mCS').value = t.cs || '';
+  document.getElementById('mCE').value = t.ce || '';
+  document.getElementById('mTS').value = t.ts || '';
+  document.getElementById('mTE').value = t.te || '';
+  document.getElementById('mDP').value = t.dp || '';
+  document.getElementById('mRC').value = t.rc || '';
+  document.getElementById('mNote').value = t.note || '';
+  document.getElementById('modalTitle').textContent = '✏️ แก้ไข ' + t.id + ' — ' + t.name;
+  document.getElementById('editModal').classList.add('show');
+}
+
+// Modal — Add mode
+function openAddModal(preCat, preSub){
+  isAddMode = true;
+  editingTaskId = null;
+  document.getElementById('mIdField').style.display = 'none';
+  document.getElementById('mCatField').style.display = '';
+  document.getElementById('mSubField').style.display = '';
+  document.getElementById('btnDelete').style.display = 'none';
+  document.getElementById('btnSave').textContent = '➕ เพิ่ม Task';
+  document.getElementById('modalTitle').textContent = '➕ เพิ่ม Task ใหม่';
+  // Reset fields
+  document.getElementById('mCat').value = preCat || 'dashboard';
+  updateSubOptions();
+  if(preSub) document.getElementById('mSub').value = preSub;
+  document.getElementById('mSubNew').value = '';
+  document.getElementById('mName').value = '';
+  document.getElementById('mDesc').value = '';
+  document.getElementById('mAssignee').value = '';
+  document.getElementById('mStatus').value = 'todo';
+  document.getElementById('mCS').value = '';
+  document.getElementById('mCE').value = '';
+  document.getElementById('mTS').value = '';
+  document.getElementById('mTE').value = '';
+  document.getElementById('mDP').value = '';
+  document.getElementById('mRC').value = '';
+  document.getElementById('mNote').value = '';
+  document.getElementById('editModal').classList.add('show');
+}
+
+function updateSubOptions(){
+  var cat = document.getElementById('mCat').value;
+  var subs = [];
+  TASKS.forEach(function(t){if(t.cat===cat && subs.indexOf(t.sub)===-1) subs.push(t.sub)});
+  var sel = document.getElementById('mSub');
+  sel.innerHTML = '<option value="">— เลือกหมวดย่อย —</option>';
+  subs.forEach(function(s){
+    sel.innerHTML += '<option value="'+s+'">'+s+'</option>';
+  });
+}
+
+function generateNewId(cat){
+  var prefix = cat==='dashboard'?'D':cat==='line'?'L':'B';
+  var maxNum = 0;
+  TASKS.forEach(function(t){
+    if(t.cat===cat){
+      // handle both original IDs (D01) and custom (XD01)
+      var m = t.id.match(/\d+$/);
+      if(m){var n=parseInt(m[0]);if(n>maxNum)maxNum=n;}
+    }
+  });
+  var next = maxNum + 1;
+  return 'X' + prefix + (next < 10 ? '0' : '') + next;
+}
+
+function closeModal(){
+  document.getElementById('editModal').classList.remove('show');
+  editingTaskId = null;
+  isAddMode = false;
+}
+
+function saveModal(){
+  if(isAddMode){
+    // Add new task
+    var name = document.getElementById('mName').value.trim();
+    if(!name){showToast('❌ กรุณากรอกชื่อ Task','error');return;}
+    var cat = document.getElementById('mCat').value;
+    var sub = document.getElementById('mSubNew').value.trim() || document.getElementById('mSub').value;
+    if(!sub){showToast('❌ กรุณาเลือกหรือพิมพ์หมวดย่อย','error');return;}
+    var newId = generateNewId(cat);
+    TASKS.push({
+      id: newId, cat: cat, sub: sub,
+      name: name,
+      desc: document.getElementById('mDesc').value,
+      assignee: document.getElementById('mAssignee').value,
+      status: document.getElementById('mStatus').value,
+      cs: document.getElementById('mCS').value,
+      ce: document.getElementById('mCE').value,
+      ts: document.getElementById('mTS').value,
+      te: document.getElementById('mTE').value,
+      dp: document.getElementById('mDP').value,
+      rc: document.getElementById('mRC').value,
+      note: document.getElementById('mNote').value
+    });
+    closeModal();
+    saveState();
+    render();
+    showToast('✅ เพิ่ม Task ' + newId + ' เรียบร้อย!');
+  } else {
+    // Edit existing task
+    var t = TASKS.find(function(x){return x.id===editingTaskId});
+    if(!t) return;
+    t.name = document.getElementById('mName').value;
+    t.desc = document.getElementById('mDesc').value;
+    t.assignee = document.getElementById('mAssignee').value;
+    t.status = document.getElementById('mStatus').value;
+    t.cs = document.getElementById('mCS').value;
+    t.ce = document.getElementById('mCE').value;
+    t.ts = document.getElementById('mTS').value;
+    t.te = document.getElementById('mTE').value;
+    t.dp = document.getElementById('mDP').value;
+    t.rc = document.getElementById('mRC').value;
+    t.note = document.getElementById('mNote').value;
+    closeModal();
+    saveState();
+    render();
+    showToast('✅ บันทึก ' + t.id + ' เรียบร้อย!');
+  }
+}
+
+function deleteTask(){
+  if(!editingTaskId) return;
+  if(!confirm('ลบ Task ' + editingTaskId + ' ?')) return;
+  TASKS = TASKS.filter(function(t){return t.id !== editingTaskId});
+  closeModal();
+  saveState();
+  render();
+  showToast('🗑️ ลบ Task เรียบร้อย!');
+}
+
+// Tooltip
+function showTip(e,id,phase){
+  var t = TASKS.find(function(x){return x.id===id});
+  if(!t) return;
+  var labels = {coding:'💻 Coding',testing:'🧪 Internal Test',deploy:'🚀 Deploy',recheck:'🔍 Recheck'};
+  var dates = {coding:t.cs+' → '+(t.ce||t.cs),testing:t.ts+' → '+(t.te||t.ts),deploy:t.dp,recheck:t.rc};
+  var tip = document.getElementById('tooltip');
+  tip.innerHTML = '<div class="tt-title">'+t.id+' '+t.name+'</div>'+
+    '<div class="tt-row"><span class="tt-label">Phase:</span> '+labels[phase]+'</div>'+
+    '<div class="tt-row"><span class="tt-label">วันที่:</span> '+dates[phase]+'</div>'+
+    '<div class="tt-row"><span class="tt-label">ผู้รับผิดชอบ:</span> '+(t.assignee||'—')+'</div>'+
+    (t.note?'<div class="tt-row"><span class="tt-label">Note:</span> '+t.note+'</div>':'');
+  tip.style.display = 'block';
+  tip.style.left = (e.clientX+12)+'px';
+  tip.style.top = (e.clientY+12)+'px';
+}
+function hideTip(){
+  document.getElementById('tooltip').style.display='none';
+}
+
+// Sync scroll
+function syncScroll(){
+  var tp = document.getElementById('taskPanel');
+  var tl = document.getElementById('timelinePanel');
+  tp.onscroll = function(){tl.scrollTop = tp.scrollTop};
+  tl.onscroll = function(){tp.scrollTop = tl.scrollTop};
+}
+
+// Export CSV
+function exportCSV(){
+  var rows = [['ID','Category','Sub Category','Task','Description','Assignee','Status','Coding Start','Coding End','Test Start','Test End','Deploy','Recheck','Note']];
+  TASKS.forEach(function(t){
+    rows.push([t.id,t.cat,t.sub,t.name,t.desc,t.assignee,t.status,t.cs,t.ce,t.ts,t.te,t.dp,t.rc,t.note]);
+  });
+  var csv = rows.map(function(r){return r.map(function(c){return '"'+(c||'').replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+  var bom = '﻿';
+  var blob = new Blob([bom+csv],{type:'text/csv;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'cruzy-gantt-tracker-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📥 Export CSV เรียบร้อย!');
+}
+
+// ============ INIT ============
+initTimeline();
+loadState();
+render();
+</script>
+</body>
+</html>
